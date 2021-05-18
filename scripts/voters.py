@@ -23,12 +23,60 @@ class AdjunctChecker(Voter):
 
     def check_and_vote(self, conllu_sents, overt_prons, null_prons):
         return prodrop_check.adjuncts_check(conllu_sents, overt_prons, null_prons)
+
+class WhQuestionChecker(Voter):
+
+    def check_and_vote(self, conllu_sents, overt_prons, null_prons):
+        return prodrop_check.wh_question_check(conllu_sents, overt_prons, null_prons)
+
+class RelativeChecker(Voter):
+
+    def check_and_vote(self, conllu_sents, overt_prons, null_prons):
+        return prodrop_check.relative_check(conllu_sents, overt_prons, null_prons)
+
+class NominalCopularChecker(Voter):
+
+    def check_and_vote(self, conllu_sents, overt_prons, null_prons):
+        return prodrop_check.nominal_copular_check(conllu_sents, overt_prons, null_prons)
+
+class AdjCopularChecker(Voter):
+    
+    def check_and_vote(self, conllu_sents, overt_prons, null_prons):
+        return prodrop_check.adj_copular_check(conllu_sents, overt_prons, null_prons)
+
+class OvertComplChecker(Voter):
+
+    def check_and_vote(self, conllu_sents, overt_prons, null_prons):
+        return prodrop_check.overt_compl_check(conllu_sents, overt_prons, null_prons)
+
+class CClauseChecker(Voter):
+
+    def check_and_vote(self, conllu_sents, overt_prons, null_prons):
+        return prodrop_check.coordinate_clause_check(conllu_sents, overt_prons, null_prons)
+
+class ComplexCClauseChecker(Voter):
+
+    def check_and_vote(self, conllu_sents, overt_prons, null_prons):
+        return prodrop_check.complex_coordinate_clause_check(conllu_sents, overt_prons, null_prons)
+
+class SubjClauseChecker(Voter):
+    
+    def check_and_vote(self, conllu_sents, overt_prons, null_prons):
+        return prodrop_check.subjunctive_clause_check(conllu_sents, overt_prons, null_prons)
         
 
 VOTER2CHECKER = {
     'subjclauses': SubjClauseChecker(),
     'subjclauses_att': SubjClauseCheckerAtt(),
-    'adjunctclauses': AdjunctChecker()
+    'adjunctclauses': AdjunctChecker(),
+    'whclauses': WhQuestionChecker(),
+    'relativeclauses': RelativeChecker(),
+    'nominalcopularclauses': NominalCopularChecker(),
+    'adjcopularclauses': AdjCopularChecker(),
+    'overtcomplclauses': OvertComplChecker(),
+    'cclauses': CClauseChecker(),
+    'complexcclauses': ComplexCClauseChecker(),
+    'subjclauses': SubjClauseChecker()
 }
 
 
@@ -48,6 +96,6 @@ def decision(text: str):
             continue
     
     if any(i > 0 for i in votes.values()):
-        # return votes
-        return max(votes, key=votes.get)  
+        return votes
+        # return max(votes, key=votes.get)  
     return 'None'
