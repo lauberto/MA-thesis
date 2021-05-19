@@ -1,9 +1,9 @@
-from my_dictionaries import get_att_dict
+from my_dictionaries import get_att_dict, get_wh_tokens
 
 
 ATT_VERBS = get_att_dict()
+WH_QUESTIONS = get_wh_tokens()
 CLAUSES_DEPREL = ['csubj', 'ccomp', 'xcomp', 'advcl', 'acl', ]
-WH_QUESTIONS = ['сколько', 'куда', 'где', 'когда', 'как', 'кем', 'чем', ]
 SUBJ_DEPREL= ['nsubj', 'csubj', ]
 SUBJ_LIST = ['чтобы', 'чтоб', ]
 

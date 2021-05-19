@@ -96,6 +96,8 @@ def decision(text: str):
             continue
     
     if any(i > 0 for i in votes.values()):
-        return votes
-        # return max(votes, key=votes.get)  
+        if votes['FALSE'] > 0:
+            return 'FALSE'
+        else:
+            return max(votes, key=votes.get)  
     return 'None'

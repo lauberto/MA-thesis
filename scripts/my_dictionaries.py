@@ -8,3 +8,7 @@ def get_att_dict():
     att_verbs = [x.strip() for x in att_verbs if x]
     att_verbs = set(att_verbs)
     return att_verbs
+
+
+def get_wh_tokens():
+    return ['сколько', 'куда', 'где', 'когда', 'как', 'кем', 'чем', ]
