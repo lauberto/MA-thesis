@@ -1,7 +1,7 @@
 import prodrop_check
 from my_dictionaries import get_wh_tokens, get_att_dict
 
-
+PUNKT = '?!'
 ATT_VERBS = get_att_dict()
 WH_QUESTIONS = get_wh_tokens()
 OTHER_TAGS = ['PUNCT', 'SYM', 'X', ]
@@ -9,7 +9,7 @@ CLASS_DICT = {'FALSE' : 0, 'TRUE': 1, 'coreference resolution': 2, }
 
 
 def preprocess(text: str):
-    if text[-1] != '.':
+    if text[-1] != '.' and text[-1] not in PUNKT:
         text = text + '.'
     return text
 

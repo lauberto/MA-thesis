@@ -1,16 +1,28 @@
 from my_dictionaries import get_att_dict, get_wh_tokens
-
+import re
 
 ATT_VERBS = get_att_dict()
 WH_QUESTIONS = get_wh_tokens()
 CLAUSES_DEPREL = ['csubj', 'ccomp', 'xcomp', 'advcl', 'acl', ]
-SUBJ_DEPREL= ['nsubj', 'csubj', ]
+SUBJ_DEPREL = ['nsubj', 'csubj', ]
+SUBJ_POS = ['NOUN', 'PROPN', 'DET', 'ADJ', 'NUM']
 SUBJ_LIST = ['чтобы', 'чтоб', ]
+EMB_PRED_POS = ['VERB', 'AUX']
+EMB_PRED_POS2 = ['NOUN', 'ADJ']
+
+
+def match_indefinite_prons(string: str):
+    match = re.search("[А-Яа-яЁё]+(-то|-нибудь)", string)
+    if match:
+        return True
+    else:
+        return False
+
 
 def detect_overt_pron_heads(conllu_sents: list) -> list:
     overt_prons = list()
     for sent in conllu_sents:
-        overt_prons = [token['head'] for token in sent if token['upos'] == 'PRON']
+        overt_prons = [token['head'] for token in sent if token['upos'] in SUBJ_POS]
     return overt_prons
 
 
@@ -21,9 +33,23 @@ def detect_null_pron_heads(conllu_sents: list) -> list:
     '''
     candidate_predicates = dict()
     null_prons = list()
+    aux_head_nodes = list()
+    dat_head_nodes = list()
+
     for sent in conllu_sents:
         for token in sent:
-            if (token['feats'] and 'VerbForm' in token['feats'] and token['feats']['VerbForm'] == 'Fin') or (token['deprel'] == 'ccomp'):
+            if token['upos'] == 'AUX':
+                aux_head_nodes.append(token['head'])
+            elif token['feats'] and 'Case' in token['feats'] and token['feats']['Case'] == 'Dat':
+                dat_head_nodes.append(token['head'])
+    for sent in conllu_sents:
+        for token in sent:
+            if (
+                token['feats'] and 'VerbForm' in token['feats'] and 
+                token['feats']['VerbForm'] == 'Fin') or (token['deprel'] == 'ccomp' or 
+                (token['id'] in aux_head_nodes and (token['upos'] in EMB_PRED_POS or token['upos'] in EMB_PRED_POS2)) or
+                (token['id'] in dat_head_nodes and token['upos'] in SUBJ_POS)
+                ):
                 candidate_predicates[token['id']] = dict()
                 candidate_predicates[token['id']]['predicate'] = token
                 candidate_predicates[token['id']]['dependents'] = list()
@@ -31,9 +57,9 @@ def detect_null_pron_heads(conllu_sents: list) -> list:
         for token in sent:
             if token['head'] in candidate_predicates.keys():
                 candidate_predicates[token['head']]['dependents'].append(token['deprel'])
-                
+
     for x in candidate_predicates.values():
-        if any(item in x['dependents'] for item in SUBJ_DEPREL):
+        if any(item in SUBJ_DEPREL for item in x['dependents']):
             continue
         else:
             null_prons.append(x['predicate']['id'])
@@ -48,7 +74,12 @@ def subclause_check(conllu_sents: list, overt_prons: list, null_prons: list):
     sconj = {'id': 0, 'head': 0}
     att_verb_position = 0
     embedded_verb = {'id': 0, 'upos': ''}
+    aux_head_nodes = list()
 
+    for sent in conllu_sents:
+        for token in sent:
+            if token['upos'] == 'AUX':
+                aux_head_nodes.append(token['head'])
     for sent in conllu_sents:
         for token in sent:
             if token['form'] == 'что': 
@@ -60,29 +91,33 @@ def subclause_check(conllu_sents: list, overt_prons: list, null_prons: list):
         for token in sent:
             if token['id'] == sconj['head']:
                 embedded_verb['upos'] = token['upos']
-
-    # if chto_count == clauses_count and embedded_verb['upos'] == 'VERB':
-    for sent in conllu_sents:
-        for token in sent:
-            if token['form'] == ',' and token['id'] < sconj['id']:
-                comma_position = token['id']
-        for token in sent:
-            if token['upos'] == 'VERB' and token['id'] < comma_position:
-                att_verb_position = token['id']
-        for token in sent:
-            if token['id'] == sconj['head']:
                 embedded_verb['id'] = token['id']
-            
-    if att_verb_position < comma_position and comma_position < sconj['id'] and embedded_verb['id'] in null_prons:
-        return 'coreference resolution'
-    elif (
-        att_verb_position < comma_position and comma_position < sconj['id'] and
-        any(i > sconj['id'] and i == sconj['head'] for i in overt_prons)
+
+    if (
+        (embedded_verb['upos'] in EMB_PRED_POS) or 
+        (embedded_verb['upos'] in EMB_PRED_POS2 and embedded_verb['id'] in aux_head_nodes)
         ):
-        return 'TRUE'
-    else:
-        return None
-    # return None
+        for sent in conllu_sents:
+            for token in sent:
+                if token['form'] == ',' and token['id'] < sconj['id']:
+                    comma_position = token['id']
+            for token in sent:
+                if token['upos'] == 'VERB' and token['id'] < comma_position:
+                    att_verb_position = token['id']
+            for token in sent:
+                if token['id'] == sconj['head']:
+                    embedded_verb['id'] = token['id']
+                
+        if att_verb_position < comma_position and comma_position < sconj['id'] and embedded_verb['id'] in null_prons:
+            return 'coreference resolution'
+        elif (
+            att_verb_position < comma_position and comma_position < sconj['id'] and
+            any(i > sconj['id'] and i == sconj['head'] for i in overt_prons)
+            ):
+            return 'TRUE'
+        else:
+            return None
+    return None
 
 
 def subclause_check_attitude(conllu_sents: list, overt_prons: list, null_prons: list):
@@ -93,7 +128,12 @@ def subclause_check_attitude(conllu_sents: list, overt_prons: list, null_prons: 
     sconj = {'id': 0, 'head': 0}
     att_verb_position = 0
     embedded_verb = {'id': 0, 'upos': ''}
+    aux_head_nodes = list()
     
+    for sent in conllu_sents:
+        for token in sent:
+            if token['upos'] == 'AUX':
+                aux_head_nodes.append(token['head'])
     for sent in conllu_sents:
         for token in sent:
             if token['form'] == 'что': 
@@ -105,30 +145,33 @@ def subclause_check_attitude(conllu_sents: list, overt_prons: list, null_prons: 
         for token in sent:
             if token['id'] == sconj['head']:
                 embedded_verb['upos'] = token['upos']
-
-    # if chto_count == clauses_count and embedded_verb['upos'] == 'VERB':
-    for sent in conllu_sents:
-        for token in sent:
-            if token['form'] == ',' and token['id'] < sconj['id']:
-                comma_position = token['id']
-        for token in sent:
-            if token['lemma'] in ATT_VERBS and token['id'] < comma_position:
-                att_verb_position = token['id']
-        for token in sent:
-            if token['id'] == sconj['head']:
                 embedded_verb['id'] = token['id']
-            
-    if att_verb_position < comma_position and comma_position < sconj['id'] and embedded_verb['id'] in null_prons:
-        return 'coreference resolution'
-    elif (
-        att_verb_position < comma_position and comma_position < sconj['id'] and
-        any(i > sconj['id'] and i == sconj['head'] for i in overt_prons)
+
+    if (
+        (embedded_verb['upos'] in EMB_PRED_POS) or 
+        (embedded_verb['upos'] in EMB_PRED_POS2 and embedded_verb['id'] in aux_head_nodes)
         ):
-        return 'TRUE'
-    else:
-        return None
-        # return 'FALSE'
-    # return None
+        for sent in conllu_sents:
+            for token in sent:
+                if token['form'] == ',' and token['id'] < sconj['id']:
+                    comma_position = token['id']
+            for token in sent:
+                if token['lemma'] in ATT_VERBS and token['id'] < comma_position:
+                    att_verb_position = token['id']
+            for token in sent:
+                if token['id'] == sconj['head']:
+                    embedded_verb['id'] = token['id']
+                
+        if att_verb_position < comma_position and comma_position < sconj['id'] and embedded_verb['id'] in null_prons:
+            return 'coreference resolution'
+        elif (
+            att_verb_position < comma_position and comma_position < sconj['id'] and
+            any(i > sconj['id'] and i == sconj['head'] for i in overt_prons)
+            ):
+            return 'TRUE'
+        else:
+            return None
+    return None
 
 
 def adjuncts_check(conllu_sents: list, overt_prons: list, null_prons: list):
@@ -177,8 +220,8 @@ def relative_check(conllu_sents: list, overt_prons: list, null_prons: list):
             return 'coreference resolution'
         if any(item in relative_nodes for item in overt_prons):
             return 'TRUE'
-        else:
-            return 'FALSE'
+        # else:
+        #     return 'FALSE'
     return None
 
 
@@ -199,8 +242,8 @@ def nominal_copular_check(conllu_sents: list, overt_prons: list, null_prons: lis
             return 'FALSE'
         elif any(item in nominal_copular_nodes for item in overt_prons):
             return 'TRUE'
-        else:
-            return 'coreference resolution'
+        # else:
+        #     return 'coreference resolution'
     return None
 
 
@@ -259,8 +302,7 @@ def overt_compl_check(conllu_sents: list, overt_prons: list, null_prons: list):
     elif any(item in null_compl_nodes for item in overt_prons):
         return 'TRUE'
     else:
-        return None
-
+        return 'coreference resolution'
 
 def coordinate_clause_check(conllu_sents: list, overt_prons: list, null_prons: list):
     coordinate_nodes = dict()
@@ -286,6 +328,7 @@ def coordinate_clause_check(conllu_sents: list, overt_prons: list, null_prons: l
         for token in sent:
             if token['head'] in coordinate_nodes and token['deprel'] in SUBJ_DEPREL:
                 coordinate_nodes[token['head']] = token['form']    
+                
     if any(item in coordinate_nodes.keys() for item in null_prons):
         return 'TRUE'
     elif any(item in coordinate_nodes.keys() for item in overt_prons):
@@ -355,4 +398,19 @@ def subjunctive_clause_check(conllu_sents: list, overt_prons: list, null_prons: 
             return 'TRUE'
         else:
             return None
-    
+
+
+def indefinite_pron_check(conllu_sents: list, overt_prons: list, null_prons: list):
+    indefinite_nodes = False
+
+    for sent in conllu_sents:
+        for token in sent:
+            if match_indefinite_prons(token['form']):
+                indefinite_nodes = True
+    if indefinite_nodes:
+        if any(item != 0 for item in null_prons):
+            return 'FALSE'
+        elif any(item != 0 for item in overt_prons):
+            return 'TRUE'
+        else:
+            return None
