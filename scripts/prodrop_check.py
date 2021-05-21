@@ -5,7 +5,7 @@ ATT_VERBS = get_att_dict()
 WH_QUESTIONS = get_wh_tokens()
 CLAUSES_DEPREL = ['csubj', 'ccomp', 'xcomp', 'advcl', 'acl', ]
 SUBJ_DEPREL = ['nsubj', 'csubj', ]
-SUBJ_POS = ['NOUN', 'PROPN', 'DET', 'ADJ', 'NUM']
+SUBJ_POS = ['NOUN', 'PROPN', 'DET', 'ADJ', 'NUM', 'PRON']
 SUBJ_LIST = ['чтобы', 'чтоб', ]
 EMB_PRED_POS = ['VERB', 'AUX']
 EMB_PRED_POS2 = ['NOUN', 'ADJ']
@@ -327,8 +327,7 @@ def coordinate_clause_check(conllu_sents: list, overt_prons: list, null_prons: l
     for sent in conllu_sents:
         for token in sent:
             if token['head'] in coordinate_nodes and token['deprel'] in SUBJ_DEPREL:
-                coordinate_nodes[token['head']] = token['form']    
-                
+                coordinate_nodes[token['head']] = token['form']       
     if any(item in coordinate_nodes.keys() for item in null_prons):
         return 'TRUE'
     elif any(item in coordinate_nodes.keys() for item in overt_prons):
