@@ -115,13 +115,6 @@ def decision(text: str):
                 return random.choice(list(votes.keys()))
         else:
             return random.choice(list(votes.keys()))
-
-
-        # return votes
-        # if votes['FALSE'] > 0:
-        #     return 'FALSE'
-        # else:
-        # return max(votes, key=votes.get)
     elif null_prons and not overt_prons:
         return 'FALSE'
     elif overt_prons and not null_prons:

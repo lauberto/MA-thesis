@@ -270,7 +270,7 @@ def adj_copular_check(conllu_sents: list, overt_prons: list, null_prons: list):
                 short_adj_copular_nodes.remove(token['head'])
     if short_adj_copular_nodes and copular_aux_count == 0:
         if any(item in short_adj_copular_nodes for item in null_prons):
-            return 'coreference resolution'
+            return 'TRUE'
         elif any(item in short_adj_copular_nodes for item in overt_prons):
             return 'TRUE'
     elif long_adj_copular_nodes and copular_aux_count == 0:
